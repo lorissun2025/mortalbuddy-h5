@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>凡人修仙传 - MortalBuddy</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a1a;--card:#12122a;--gold:#d4a843;--purple:#8b5cf6;--text:#e2e8f0;--muted:#64748b;--danger:#ef4444;--success:#22c55e}
+body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;min-height:100vh;max-width:480px;margin:0 auto;position:relative;overflow-x:hidden}
+.page{display:none;padding:16px 16px 80px;min-height:100vh}
+.page.active{display:block}
+
+/* Tab Bar */
+.tabs{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:#0f0f2a;border-top:1px solid #1e1e3a;z-index:100}
+.tab{flex:1;text-align:center;padding:10px 0;font-size:12px;color:var(--muted);cursor:pointer;transition:.2s}
+.tab.active{color:var(--gold)}
+.tab .icon{font-size:20px;display:block;margin-bottom:2px}
+
+/* Hatch Page */
+.hatch-title{text-align:center;padding:40px 0 20px;font-size:24px;color:var(--gold)}
+.hatch-sub{text-align:center;color:var(--muted);margin-bottom:24px;font-size:14px}
+.species-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.species-btn{background:var(--card);border:2px solid transparent;border-radius:12px;padding:12px 4px;text-align:center;cursor:pointer;transition:.2s}
+.species-btn:hover,.species-btn.selected{border-color:var(--gold);background:#1a1a3a}
+.species-btn .emoji{font-size:28px;display:block}
+.species-btn .name{font-size:11px;color:var(--muted);margin-top:4px}
+.name-input{width:100%;padding:12px 16px;background:var(--card);border:1px solid #2a2a4a;border-radius:10px;color:var(--text);font-size:16px;margin:16px 0;outline:none}
+.name-input:focus{border-color:var(--gold)}
+.hatch-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--gold),#b8860b);border:none;border-radius:12px;color:#0a0a1a;font-size:18px;font-weight:bold;cursor:pointer;transition:.2s}
+.hatch-btn:hover{opacity:.9;transform:scale(1.02)}
+.hatch-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Pet Card */
+.pet-display{text-align:center;padding:20px 0}
+.pet-emoji-wrap{position:relative;display:inline-block}
+.pet-emoji{font-size:64px;display:block;filter:drop-shadow(0 0 20px var(--realm-glow,#333))}
+.pet-emoji.shiny{animation:sparkle 1.5s infinite}
+@keyframes sparkle{0%,100%{filter:drop-shadow(0 0 20px gold) brightness(1)}50%{filter:drop-shadow(0 0 40px #fff) brightness(1.3)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 5px gold}50%{box-shadow:0 0 30px gold,0 0 60px #fff}}
+.anim-bounce{animation:bounce .5s}
+.anim-shake{animation:shake .5s}
+.anim-glow{animation:glowPulse 1s}
+.realm-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:bold;margin:8px 0}
+.pet-name{font-size:22px;font-weight:bold;margin:4px 0}
+.stars{font-size:16px;margin:4px 0}
+.star-on{color:var(--gold)}
+.star-off{color:#333}
+.speech-bubble{background:var(--card);border:1px solid #2a2a4a;border-radius:12px;padding:10px 14px;margin:12px 0;font-size:13px;color:var(--muted);text-align:center;position:relative;min-height:40px}
+.speech-bubble::before{content:'';position:absolute;top:-6px;left:50%;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:6px solid #2a2a4a}
+
+/* Stats */
+.stats-card{background:var(--card);border-radius:12px;padding:16px;margin:12px 0}
+.stat-row{display:flex;align-items:center;margin:6px 0;font-size:13px}
+.stat-label{width:50px;color:var(--muted)}
+.stat-bar-bg{flex:1;height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden;margin:0 8px}
+.stat-bar{height:100%;border-radius:4px;transition:width .3s}
+.stat-val{width:30px;text-align:right;font-size:12px;color:var(--muted)}
+.exp-bar{margin:12px 0}
+.exp-bar .stat-bar{background:linear-gradient(90deg,var(--gold),#f59e0b)}
+.affection{text-align:center;margin:8px 0;font-size:14px}
+
+/* Quick Actions */
+.actions{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+.action-btn{background:var(--card);border:1px solid #2a2a4a;border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:.2s;font-size:14px;color:var(--text)}
+.action-btn:hover{border-color:var(--gold);background:#1a1a3a}
+.action-btn:active{transform:scale(.95)}
+.action-btn .btn-icon{font-size:22px;display:block;margin-bottom:4px}
+.action-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* Cultivate Page */
+.cultivate-section{background:var(--card);border-radius:12px;padding:16px;margin:12px 0}
+.cultivate-title{font-size:16px;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.breakthrough-box{text-align:center;padding:20px}
+.bt-rate{font-size:24px;font-weight:bold;margin:12px 0}
+.bt-rate.high{color:var(--success)}
+.bt-rate.mid{color:var(--gold)}
+.bt-rate.low{color:var(--danger)}
+.bt-btn{padding:12px 32px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:none;border-radius:10px;color:#fff;font-size:16px;cursor:pointer;transition:.2s}
+.bt-btn:hover{opacity:.9}
+.bt-btn:disabled{opacity:.3;cursor:not-allowed}
+.seclude-slider{width:100%;margin:12px 0;accent-color:var(--gold)}
+.pill-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0}
+.pill-btn{background:#1a1a3a;border:1px solid #2a2a4a;border-radius:8px;padding:10px;text-align:center;cursor:pointer;font-size:13px}
+.pill-btn:hover{border-color:var(--purple)}
+.pill-count{color:var(--muted);font-size:11px}
+
+/* Inventory */
+.inv-card{background:var(--card);border-radius:12px;padding:16px;margin:12px 0}
+.inv-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1a1a3a}
+.inv-row:last-child{border:none}
+.stones-display{text-align:center;padding:16px;font-size:20px}
+.stones-display span{color:var(--gold);font-weight:bold;font-size:28px}
+.log-list{max-height:300px;overflow-y:auto}
+.log-item{padding:6px 0;border-bottom:1px solid #1a1a3a;font-size:12px;color:var(--muted)}
+.log-time{color:#444;font-size:10px}
+
+/* Battle placeholder */
+.battle-placeholder{text-align:center;padding:60px 20px}
+.battle-art{font-size:14px;color:var(--muted);line-height:1.6;white-space:pre;margin:20px 0;font-family:monospace}
+.battle-soon{color:var(--gold);font-size:18px;margin-top:20px}
+
+/* Toast */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);border-radius:10px;padding:10px 20px;z-index:200;font-size:14px;animation:fadeInOut 2s forwards;max-width:90%}
+.toast.enlightenment{border-color:#ffd700;background:linear-gradient(135deg,#1a1a00,#332200);color:#ffd700;font-weight:bold;animation:goldenGlow 0.5s ease infinite alternate}
+@keyframes goldenGlow{from{text-shadow:0 0 5px gold}to{text-shadow:0 0 20px gold,0 0 40px #fff}}
+@keyframes fadeInOut{0%{opacity:0;top:0}10%{opacity:1;top:20px}80%{opacity:1;top:20px}100%{opacity:0;top:0}}
+
+/* Reset */
+.reset-btn{display:block;margin:20px auto;padding:8px 24px;background:transparent;border:1px solid #333;border-radius:8px;color:#555;font-size:12px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- HATCH PAGE -->
+<div id="page-hatch" class="page active">
+  <div class="hatch-title">⚔️ 凡人修仙传</div>
+  <div class="hatch-sub">选择一只灵宠，踏上修仙之路</div>
+  <div class="species-grid" id="speciesGrid"></div>
+  <input class="name-input" id="petNameInput" placeholder="给灵宠取个名字（留空随机）" maxlength="8">
+  <button class="hatch-btn" id="hatchBtn" disabled>🐣 孵化灵宠</button>
+</div>
+
+<!-- PET PAGE -->
+<div id="page-pet" class="page">
+  <div class="pet-display">
+    <div class="pet-emoji-wrap">
+      <span class="pet-emoji" id="petEmoji">🐱</span>
+    </div>
+    <div class="pet-name" id="petName"></div>
+    <div class="stars" id="petStars"></div>
+    <span class="realm-badge" id="realmBadge"></span>
+    <div style="color:var(--muted);font-size:13px;margin-top:4px" id="cultPath"></div>
+  </div>
+  <div id="weatherDisplay" style="text-align:center;font-size:14px;margin:8px 0"></div>
+  <div class="speech-bubble" id="speechBubble">道友，今日修炼否？</div>
+  <div class="stats-card">
+    <div class="exp-bar">
+      <div class="stat-row"><span class="stat-label">经验</span><div class="stat-bar-bg"><div class="stat-bar" id="expBar"></div></div><span class="stat-val" id="expText"></span></div>
+    </div>
+    <div class="stat-row"><span class="stat-label">灵力</span><div class="stat-bar-bg"><div class="stat-bar" id="bar-spirit" style="background:#3b82f6"></div></div><span class="stat-val" id="val-spirit"></span></div>
+    <div class="stat-row"><span class="stat-label">根骨</span><div class="stat-bar-bg"><div class="stat-bar" id="bar-root" style="background:#22c55e"></div></div><span class="stat-val" id="val-root"></span></div>
+    <div class="stat-row"><span class="stat-label">悟性</span><div class="stat-bar-bg"><div class="stat-bar" id="bar-insight" style="background:#8b5cf6"></div></div><span class="stat-val" id="val-insight"></span></div>
+    <div class="stat-row"><span class="stat-label">功德</span><div class="stat-bar-bg"><div class="stat-bar" id="bar-merit" style="background:#f59e0b"></div></div><span class="stat-val" id="val-merit"></span></div>
+    <div class="stat-row"><span class="stat-label">道心</span><div class="stat-bar-bg"><div class="stat-bar" id="bar-daoHeart" style="background:#ef4444"></div></div><span class="stat-val" id="val-daoHeart"></span></div>
+  </div>
+  <div class="affection" id="affection"></div>
+  <div class="actions">
+    <button class="action-btn" onclick="doPractice()"><span class="btn-icon">🧘</span>修炼</button>
+    <button class="action-btn" onclick="doFeed()"><span class="btn-icon">🍖</span>喂食</button>
+    <button class="action-btn" onclick="doTrial()"><span class="btn-icon">⚔️</span>历练</button>
+    <button class="action-btn" onclick="doPat()"><span class="btn-icon">🤚</span>抚摸</button>
+    <button class="action-btn" onclick="doTalk()"><span class="btn-icon">💬</span>对话</button>
+  </div>
+  <button class="reset-btn" onclick="if(confirm('确定要放生灵宠重新开始？')){game.reset();showHatch()}">🔄 放生重来</button>
+</div>
+
+<!-- CULTIVATE PAGE -->
+<div id="page-cultivate" class="page">
+  <div class="cultivate-section">
+    <div class="cultivate-title">🌀 突破境界</div>
+    <div class="breakthrough-box">
+      <div id="btCurrent" style="color:var(--muted)">当前境界</div>
+      <div id="btNext" style="margin:8px 0">→ 下一境界</div>
+      <div class="bt-rate" id="btRate">--</div>
+      <div id="btLevel" style="color:var(--muted);font-size:13px;margin:8px 0"></div>
+      <button class="bt-btn" id="btBtn" onclick="doBreakthrough()" disabled>尝试突破</button>
+    </div>
+  </div>
+  <div class="cultivate-section">
+    <div class="cultivate-title">🏔️ 闭关修炼</div>
+    <div style="text-align:center">
+      <div>闭关时辰：<span id="secludeHours">3</span></div>
+      <input type="range" class="seclude-slider" min="1" max="12" value="3" oninput="document.getElementById('secludeHours').textContent=this.value">
+      <div style="font-size:12px;color:var(--muted)">高风险高收益，可能走火入魔</div>
+      <button class="bt-btn" style="margin-top:12px" onclick="doSeclude()">闭关</button>
+    </div>
+  </div>
+  <div class="cultivate-section">
+    <div class="cultivate-title">💊 服用丹药</div>
+    <div class="pill-grid" id="pillGrid"></div>
+  </div>
+</div>
+
+<!-- INVENTORY PAGE -->
+<div id="page-inventory" class="page">
+  <div class="inv-card">
+    <div class="stones-display">💰 灵石 <span id="stoneCount">0</span></div>
+  </div>
+  <div class="inv-card">
+    <div class="cultivate-title">🎒 丹药</div>
+    <div id="invPills"></div>
+  </div>
+  <div class="inv-card">
+    <div class="cultivate-title">📜 修炼日志</div>
+    <div class="log-list" id="logList"></div>
+  </div>
+</div>
+
+<!-- BATTLE PAGE -->
+<div id="page-battle" class="page">
+  <div class="battle-placeholder">
+    <div style="font-size:28px;margin-bottom:20px">⚔️</div>
+    <div class="battle-art">
+    ╔══════════════════╗
+    ║  天地不仁        ║
+    ║  以万物为刍狗    ║
+    ║                  ║
+    ║  仙道茫茫        ║
+    ║  唯争一线        ║
+    ╚══════════════════╝
+    </div>
+    <div class="battle-soon">比武场 · 即将开放</div>
+    <div style="color:var(--muted);font-size:13px;margin-top:12px">与道友切磋，争夺仙榜排名</div>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tabs">
+  <div class="tab active" data-page="pet" onclick="switchTab('pet')"><span class="icon">🐱</span>灵宠</div>
+  <div class="tab" data-page="cultivate" onclick="switchTab('cultivate')"><span class="icon">🌀</span>修炼</div>
+  <div class="tab" data-page="inventory" onclick="switchTab('inventory')"><span class="icon">🎒</span>背包</div>
+  <div class="tab" data-page="battle" onclick="switchTab('battle')"><span class="icon">⚔️</span>比武</div>
+</div>
+
+<script src="game.js"></script>
+<script>
+const game = new MortalBuddy();
+let selectedSpecies = null;
+
+// Speech flavor texts
+const SPEECHES = [
+  '道友，今日修炼否？','天地灵气充沛，正是修炼好时机','吾感应到突破的契机...',
+  '何不出去历练一番？','道心稳固，方能走得长远','修炼一途，贵在坚持',
+  '近日天象有变，需谨慎行事','灵石不够了...该去历练赚些','突破在即，不能松懈！',
+  '大道三千，吾只取一条'
+];
+
+// Init species grid
+const grid = document.getElementById('speciesGrid');
+for (const [key, sp] of Object.entries(SPECIES)) {
+  const btn = document.createElement('div');
+  btn.className = 'species-btn';
+  btn.innerHTML = `<span class="emoji">${sp.emoji}</span><span class="name">${sp.name}</span>`;
+  btn.onclick = () => {
+    document.querySelectorAll('.species-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedSpecies = key;
+    document.getElementById('hatchBtn').disabled = false;
+  };
+  grid.appendChild(btn);
+}
+
+document.getElementById('hatchBtn').onclick = () => {
+  if (!selectedSpecies) return;
+  const btns = document.querySelectorAll('.species-btn');
+  const keys = Object.keys(SPECIES);
+  const total = keys.length;
+  const targetIdx = keys.indexOf(selectedSpecies);
+  let round = 0, i = 0, delay = 50;
+  document.getElementById('hatchBtn').disabled = true;
+  const timer = setInterval(() => {
+    btns.forEach(b => b.classList.remove('selected'));
+    btns[i % total].classList.add('selected');
+    i++;
+    if (i % total === 0) round++;
+    if (round >= 3 && i % total === targetIdx) {
+      clearInterval(timer);
+      const name = document.getElementById('petNameInput').value.trim();
+      const result = game.hatch(name || SPECIES[selectedSpecies].name);
+      if (result.ok) {
+        game.state.pet.species = selectedSpecies;
+        game.save();
+        showToast('🎉 ' + result.msg);
+        refreshUI();
+        switchTab('pet');
+      } else {
+        showToast(result.msg);
+      }
+      document.getElementById('hatchBtn').disabled = false;
+    }
+  }, delay);
+};
+
+function switchTab(name) {
+  if (name !== 'hatch' && !game.getPet()) { showToast('请先孵化灵宠'); return; }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + (game.getPet() ? name : 'hatch'));
+  if (page) page.classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === name));
+  if (name === 'cultivate') refreshCultivate();
+  if (name === 'inventory') refreshInventory();
+  if (name === 'pet') refreshPet();
+}
+
+function showHatch() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-hatch').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+}
+
+function refreshUI() {
+  if (!game.getPet()) { showHatch(); return; }
+  refreshPet();
+}
+
+function refreshPet() {
+  const s = game.getStatus();
+  if (!s) return;
+  const sp = SPECIES[s.species];
+  document.getElementById('petEmoji').textContent = sp.emoji;
+  document.getElementById('petEmoji').className = 'pet-emoji' + (s.shiny ? ' shiny' : '');
+  document.getElementById('petEmoji').style.setProperty('--realm-glow', s.realmColor);
+  document.getElementById('petEmoji').style.filter = `drop-shadow(0 0 20px ${s.realmColor})`;
+  document.getElementById('petName').textContent = s.name;
+  document.getElementById('cultPath').textContent = '修炼之道：' + sp.path;
+  
+  let stars = '';
+  for (let i = 1; i <= 5; i++) stars += `<span class="${i <= s.rarity ? 'star-on' : 'star-off'}">${i <= s.rarity ? '★' : '☆'}</span>`;
+  document.getElementById('petStars').innerHTML = stars;
+
+  const badge = document.getElementById('realmBadge');
+  badge.textContent = s.realmName + ' Lv.' + s.level;
+  badge.style.background = s.realmColor + '22';
+  badge.style.color = s.realmColor;
+  badge.style.border = '1px solid ' + s.realmColor + '44';
+
+  document.getElementById('expBar').style.width = s.expPercent + '%';
+  document.getElementById('expText').textContent = s.expPercent + '%';
+
+  const maxStat = 50 + s.level * 5;
+  for (const stat of ['spirit','root','insight','merit','daoHeart']) {
+    document.getElementById('bar-' + stat).style.width = Math.min(100, s.stats[stat] / maxStat * 100) + '%';
+    document.getElementById('val-' + stat).textContent = s.stats[stat];
+  }
+
+  const hearts = Math.ceil(s.affection / 20);
+  document.getElementById('affection').textContent = '❤️'.repeat(hearts) + '🖤'.repeat(5 - hearts) + ' ' + s.affection;
+  
+  document.getElementById('weatherDisplay').textContent=game.getWeather().emoji+' '+game.getWeather().text;
+  document.getElementById('speechBubble').textContent = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
+}
+
+function refreshCultivate() {
+  const s = game.getStatus();
+  if (!s) return;
+  const realm = REALMS[s.realm];
+  document.getElementById('btCurrent').textContent = '当前：' + realm.name + ' Lv.' + s.level;
+  
+  if (s.realm < 9) {
+    const next = REALMS[s.realm + 1];
+    const bonus = (s.stats.daoHeart + s.stats.insight) * 0.01;
+    const rate = Math.min(99, Math.round((next.rate + bonus) * 100));
+    document.getElementById('btNext').textContent = '→ ' + next.name;
+    const rateEl = document.getElementById('btRate');
+    rateEl.textContent = rate + '%';
+    rateEl.className = 'bt-rate ' + (rate > 50 ? 'high' : rate > 20 ? 'mid' : 'low');
+    document.getElementById('btLevel').textContent = `需要 Lv.${next.minLv}（当前 Lv.${s.level}）`;
+    document.getElementById('btBtn').disabled = s.level < next.minLv;
+  } else {
+    document.getElementById('btNext').textContent = '已达巅峰！';
+    document.getElementById('btRate').textContent = '∞';
+    document.getElementById('btLevel').textContent = '';
+    document.getElementById('btBtn').disabled = true;
+  }
+
+  // Pills
+  const pills = game.state.inventory.pills || {};
+  const pillNames = { expPill: '经验丹💊', realmPill: '破境丹🌟', healPill: '疗伤丹💚', spiritPill: '聚灵丹🔵', rootPill: '培根丹🟢' };
+  const pg = document.getElementById('pillGrid');
+  pg.innerHTML = '';
+  for (const [k, name] of Object.entries(pillNames)) {
+    const count = pills[k] || 0;
+    pg.innerHTML += `<div class="pill-btn" onclick="doUsePill('${k}')">${name}<div class="pill-count">x${count}</div></div>`;
+  }
+}
+
+function refreshInventory() {
+  const s = game.getStatus();
+  if (!s) return;
+  document.getElementById('stoneCount').textContent = game.state.inventory.spiritStones;
+  
+  const pills = game.state.inventory.pills || {};
+  const pillNames = { expPill: '经验丹', realmPill: '破境丹', healPill: '疗伤丹', spiritPill: '聚灵丹', rootPill: '培根丹' };
+  const ip = document.getElementById('invPills');
+  ip.innerHTML = '';
+  for (const [k, name] of Object.entries(pillNames)) {
+    ip.innerHTML += `<div class="inv-row"><span>${name}</span><span style="color:var(--gold)">x${pills[k] || 0}</span></div>`;
+  }
+
+  const ll = document.getElementById('logList');
+  ll.innerHTML = '';
+  for (const item of (game.state.log || []).slice(0, 15)) {
+    const t = new Date(item.time);
+    ll.innerHTML += `<div class="log-item"><div class="log-time">${t.toLocaleString('zh-CN')}</div>${item.text}</div>`;
+  }
+}
+
+function animatePet(type) {
+  const el = document.getElementById('petEmoji');
+  const cls = 'anim-' + type;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), type === 'glow' ? 1000 : 500);
+}
+function doPractice() {
+  const r = game.practice();
+  showToast(r.msg, r.msg && r.msg.includes('顿悟'));
+  animatePet('bounce');
+  refreshPet();
+}
+function doFeed() {
+  const r = game.feed();
+  showToast(r.msg);
+  animatePet('bounce');
+  refreshPet();
+}
+function doTrial() {
+  const r = game.trial();
+  if (r.ok) {
+    let msg = r.text;
+    if (r.rewards && r.rewards.length) msg += '\n' + r.rewards.join('、');
+    showToast(msg);
+  } else showToast(r.msg);
+  animatePet('shake');
+  refreshPet();
+}
+function doBreakthrough() {
+  const r = game.breakthrough();
+  showToast(r.msg);
+  if (r.ok) animatePet('glow');
+  refreshPet();
+  refreshCultivate();
+}
+function doSeclude() {
+  const h = parseInt(document.getElementById('secludeHours').textContent);
+  const r = game.seclude(h);
+  showToast(r.msg);
+  refreshPet();
+}
+function doPat(){const r=game.pat();showToast(r.msg);refreshPet()}
+function doTalk(){const r=game.talk();showToast(r.msg);refreshPet()}
+function doUsePill(type) {
+  const r = game.usePill(type);
+  showToast(r.msg);
+  refreshPet();
+  refreshCultivate();
+}
+
+function showToast(msg, enlightenment) {
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+  const t = document.createElement('div');
+  t.className = 'toast' + (enlightenment ? ' enlightenment' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), enlightenment ? 4000 : 2500);
+}
+
+// Auto refresh on load
+refreshUI();
+</script>
+</body>
+</html>
