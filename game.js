@@ -109,6 +109,48 @@ const TRIAL_EVENTS = [
   { tier: 4, text: '在大道之畔与天道化身论道，得闻至高法则！', reward: { exp: 1100, insight: 5, root: 4, merit: 8 } },
 ];
 
+const NPC_NAMES = [
+  '剑无痕', '冷月霜', '天机子', '幻灵真人', '墨渊', '青云散人', '紫云仙子',
+  '玄冥长老', '风无影', '霜华剑客', '幽冥子', '碧落真人', '赤焰魔君', '苍穹道人',
+  '灵霄仙尊', '九幽散人', '白衣剑仙', '血魔老祖', '冰魄真人', '雷动天',
+  '星辰子', '太虚道人', '凤凰仙子', '混沌散人', '龙吟真人', '夜无殇',
+  '凌霄剑圣', '月影仙子', '破灭道人', '万妖真人', '天璇仙子', '无极散人',
+  '烈焰神君', '幽兰仙子', '苍茫道人'
+];
+
+const ROUND_TEXTS = [
+  '剑气纵横，杀意凌厉！',
+  '灵力碰撞，天地震动！',
+  '法术交织，光芒万丈！',
+  '拳风呼啸，劲气破空！',
+  '剑意冲霄，万物震颤！',
+  '灵压如山，虚空碎裂！',
+  '符文漫天，法力激荡！',
+  '金光护体，硬抗一击！',
+  '身法如风，幻影重重！',
+  '雷霆万钧，电光火石！',
+  '冰火交融，气浪翻涌！',
+  '罡气横扫，沙尘蔽日！',
+  '道韵流转，意境交锋！',
+  '灵兽咆哮，威压四散！',
+  '法宝碰撞，叮当震耳！',
+  '阵法浮现，困敌其中！',
+  '丹气弥漫，毒雾翻滚！',
+  '血气冲天，战意昂扬！',
+  '虚空震荡，时空扭曲！',
+  '天劫雷云，隐隐浮现！',
+  '因果之线，若隐若现！',
+  '大道轰鸣，天机显露！',
+];
+
+const RANK_THRESHOLDS = [
+  { wins: 0,   rank: '凡人', color: '#9ca3af' },
+  { wins: 10,  rank: '修士', color: '#93c5fd' },
+  { wins: 30,  rank: '仙师', color: '#8b5cf6' },
+  { wins: 60,  rank: '大仙', color: '#f59e0b' },
+  { wins: 100, rank: '仙尊', color: '#ef4444' },
+];
+
 class MortalBuddy {
   constructor() {
     this.stateKey = 'mortalbuddy';
@@ -139,7 +181,7 @@ class MortalBuddy {
   }
 
   defaultState() {
-    return { pet: null, inventory: { spiritStones: 100, pills: { expPill: 3, realmPill: 1, healPill: 5, spiritPill: 3, rootPill: 2 } }, weather: null, weatherTime: 0, log: [] };
+    return { pet: null, inventory: { spiritStones: 100, pills: { expPill: 3, realmPill: 1, healPill: 5, spiritPill: 3, rootPill: 2 } }, weather: null, weatherTime: 0, log: [], stats: { wins: 0, losses: 0, rank: '凡人' } };
   }
 
   save() {
@@ -531,8 +573,135 @@ class MortalBuddy {
   }
 
   duel(pet2) {
-    // 斗法存根 - 即将开放
-    return { ok: false, msg: '比武场尚未开放，仙道茫茫，敬请期待...' };
+    const pet = this.state.pet;
+    if (!pet) return { ok: false, msg: '还没有灵宠，无法比武' };
+    if (pet.stats.spirit < 20) return { ok: false, msg: '灵力不足，无法比武（需要20）' };
+
+    this._updateAffectionAndMood();
+    pet.stats.spirit -= 15;
+    pet.lastInteract = Date.now();
+
+    if (!this.state.stats) this.state.stats = { wins: 0, losses: 0, rank: '凡人' };
+
+    const opponent = pet2 || this.generateOpponent();
+    const rounds = [];
+    const totalRounds = 3 + Math.floor(Math.random() * 3); // 3-5 rounds
+    let playerHp = 100 + pet.level * 10 + pet.stats.daoHeart * 3;
+    let oppHp = 100 + opponent.level * 10 + opponent.stats.daoHeart * 3;
+
+    const playerRealmMult = Math.pow(1.5, pet.realm);
+    const oppRealmMult = Math.pow(1.5, opponent.realm);
+
+    for (let i = 0; i < totalRounds; i++) {
+      const playerAtk = (pet.stats.spirit + pet.stats.root + Math.floor(Math.random() * 10)) * playerRealmMult;
+      const oppDef = opponent.stats.daoHeart + opponent.stats.merit;
+      const oppAtk = (opponent.stats.spirit + opponent.stats.root + Math.floor(Math.random() * 10)) * oppRealmMult;
+      const playerDef = pet.stats.daoHeart + pet.stats.merit;
+
+      const dmgToOpp = Math.max(1, Math.floor(playerAtk - oppDef * 0.5));
+      const dmgToPlayer = Math.max(1, Math.floor(oppAtk - playerDef * 0.5));
+
+      oppHp -= dmgToOpp;
+      playerHp -= dmgToPlayer;
+
+      rounds.push({
+        round: i + 1,
+        flavor: ROUND_TEXTS[Math.floor(Math.random() * ROUND_TEXTS.length)],
+        playerDmg: dmgToPlayer,
+        oppDmg: dmgToOpp,
+        playerHp: Math.max(0, playerHp),
+        oppHp: Math.max(0, oppHp),
+      });
+
+      if (playerHp <= 0 || oppHp <= 0) break;
+    }
+
+    const won = playerHp > oppHp;
+    let rewards;
+    if (won) {
+      const stones = 20 + opponent.level * 5 + opponent.realm * 10;
+      const exp = 30 + opponent.level * 8 + opponent.realm * 15;
+      this.state.inventory.spiritStones += stones;
+      pet.exp += exp;
+      while (pet.exp >= pet.expToNext) {
+        pet.exp -= pet.expToNext;
+        this._levelUpStats(pet);
+      }
+      this.state.stats.wins = (this.state.stats.wins || 0) + 1;
+      rewards = { stones, exp, msg: `胜利！灵石+${stones}，经验+${exp}` };
+      this.addLog(`比武战胜${opponent.name}（${opponent.realmName}），灵石+${stones}，经验+${exp}`);
+    } else {
+      const exp = 10 + opponent.level * 2;
+      pet.exp += exp;
+      while (pet.exp >= pet.expToNext) {
+        pet.exp -= pet.expToNext;
+        this._levelUpStats(pet);
+      }
+      this.state.stats.losses = (this.state.stats.losses || 0) + 1;
+      rewards = { stones: 0, exp, msg: `败北...但获得安慰经验+${exp}` };
+      this.addLog(`比武败于${opponent.name}（${opponent.realmName}），获得安慰经验+${exp}`);
+    }
+
+    this.state.stats.rank = this.getRank().rank;
+    this.save();
+    return { ok: true, opponent, rounds, result: won ? 'win' : 'loss', rewards };
+  }
+
+  generateOpponent() {
+    const pet = this.state.pet;
+    const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
+    const realmOffset = Math.floor(Math.random() * 3) - 1; // ±1
+    const realm = pet ? Math.max(0, Math.min(9, pet.realm + realmOffset)) : 0;
+    const level = REALMS[realm].minLv + Math.floor(Math.random() * 3);
+    const speciesKeys = Object.keys(SPECIES);
+    const species = speciesKeys[Math.floor(Math.random() * speciesKeys.length)];
+    const rarity = this.weightedRandom(RARITY_WEIGHTS) + 1;
+    const sp = SPECIES[species];
+    const stats = { spirit: 10, root: 10, insight: 10, merit: 10, daoHeart: 10 };
+    for (const [k, v] of Object.entries(sp.bonus)) stats[k] += v * rarity;
+    stats.spirit += level * 2;
+    stats.root += level;
+    stats.daoHeart += level;
+    stats.merit += Math.floor(level * 0.5);
+
+    return {
+      name, species, rarity, realm, level, stats,
+      speciesName: sp.name, speciesEmoji: sp.emoji,
+      realmName: REALMS[realm].name, realmColor: REALMS[realm].color,
+      cultivationPath: sp.path,
+    };
+  }
+
+  getOpponents() {
+    if (!this.state.pet) return [];
+    const easy = this.generateOpponent();
+    easy.realm = Math.max(0, this.state.pet.realm - 1);
+    easy.realmName = REALMS[easy.realm].name;
+    easy.level = Math.max(1, this.state.pet.level - 2);
+    easy.difficulty = '弱';
+
+    const medium = this.generateOpponent();
+    medium.difficulty = '同';
+
+    const hard = this.generateOpponent();
+    hard.realm = Math.min(9, this.state.pet.realm + 1);
+    hard.realmName = REALMS[hard.realm].name;
+    hard.level = this.state.pet.level + 3;
+    hard.stats.spirit += 10;
+    hard.stats.root += 5;
+    hard.difficulty = '强';
+
+    return [easy, medium, hard];
+  }
+
+  getRank() {
+    if (!this.state.stats) this.state.stats = { wins: 0, losses: 0, rank: '凡人' };
+    const wins = this.state.stats.wins || 0;
+    let current = RANK_THRESHOLDS[0];
+    for (const t of RANK_THRESHOLDS) {
+      if (wins >= t.wins) current = t;
+    }
+    return { rank: current.rank, color: current.color, wins };
   }
 
   enlightenment() {

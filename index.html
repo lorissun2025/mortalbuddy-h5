@@ -97,10 +97,37 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 .log-item{padding:6px 0;border-bottom:1px solid #1a1a3a;font-size:12px;color:var(--muted)}
 .log-time{color:#444;font-size:10px}
 
-/* Battle placeholder */
-.battle-placeholder{text-align:center;padding:60px 20px}
-.battle-art{font-size:14px;color:var(--muted);line-height:1.6;white-space:pre;margin:20px 0;font-family:monospace}
-.battle-soon{color:var(--gold);font-size:18px;margin-top:20px}
+/* Battle Page */
+.battle-title{text-align:center;padding:30px 0 8px;font-size:24px;color:var(--gold)}
+.battle-sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:16px}
+.battle-rank{text-align:center;font-size:14px;color:var(--gold);margin:4px 0}
+.battle-record{display:flex;justify-content:center;gap:20px;margin:12px 0;font-size:14px}
+.battle-record .win{color:var(--success)}
+.battle-record .loss{color:var(--danger)}
+.opp-card{background:var(--card);border:1px solid #2a2a4a;border-radius:12px;padding:16px;margin:10px 0;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:14px}
+.opp-card:hover{border-color:var(--gold);background:#1a1a3a}
+.opp-card:active{transform:scale(.98)}
+.opp-emoji{font-size:40px}
+.opp-info{flex:1}
+.opp-name{font-size:16px;font-weight:bold}
+.opp-detail{font-size:12px;color:var(--muted);margin-top:4px}
+.opp-diff{padding:4px 10px;border-radius:8px;font-size:12px;font-weight:bold;white-space:nowrap}
+.opp-diff.easy{background:#22c55e22;color:#22c55e}
+.opp-diff.medium{background:#f59e0b22;color:#f59e0b}
+.opp-diff.hard{background:#ef444422;color:#ef4444}
+.battle-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:150;justify-content:center;align-items:center;padding:20px}
+.battle-modal.show{display:flex}
+.battle-modal-content{background:var(--card);border-radius:16px;max-width:420px;width:100%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column}
+.battle-modal-header{padding:16px;text-align:center;border-bottom:1px solid #2a2a4a}
+.battle-modal-body{padding:16px;overflow-y:auto;flex:1}
+.round-log{max-height:40vh;overflow-y:auto}
+.round-item{padding:8px 0;border-bottom:1px solid #1a1a3a;font-size:13px;line-height:1.5}
+.round-num{color:var(--gold);font-weight:bold}
+.battle-modal-footer{padding:16px;text-align:center;border-top:1px solid #2a2a4a}
+.battle-rewards{margin:12px 0;font-size:14px;color:var(--gold)}
+.victory-text{color:#ffd700;font-size:22px;font-weight:bold;text-shadow:0 0 10px gold,0 0 20px gold,0 0 40px #b8860b}
+.defeat-text{color:var(--danger);font-size:22px;font-weight:bold;text-shadow:0 0 10px rgba(239,68,68,.5)}
+.battle-no-pet{text-align:center;padding:80px 20px;color:var(--muted);font-size:16px}
 
 /* Toast */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--gold);border-radius:10px;padding:10px 20px;z-index:200;font-size:14px;animation:fadeInOut 2s forwards;max-width:90%}
@@ -153,6 +180,7 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
     <button class="action-btn" onclick="doTrial()"><span class="btn-icon">⚔️</span>历练</button>
     <button class="action-btn" onclick="doPat()"><span class="btn-icon">🤚</span>抚摸</button>
     <button class="action-btn" onclick="doTalk()"><span class="btn-icon">💬</span>对话</button>
+    <button class="action-btn" onclick="doShare()"><span class="btn-icon">📤</span>分享</button>
   </div>
   <button class="reset-btn" onclick="if(confirm('确定要放生灵宠重新开始？')){game.reset();showHatch()}">🔄 放生重来</button>
 </div>
@@ -201,19 +229,18 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 
 <!-- BATTLE PAGE -->
 <div id="page-battle" class="page">
-  <div class="battle-placeholder">
-    <div style="font-size:28px;margin-bottom:20px">⚔️</div>
-    <div class="battle-art">
-    ╔══════════════════╗
-    ║  天地不仁        ║
-    ║  以万物为刍狗    ║
-    ║                  ║
-    ║  仙道茫茫        ║
-    ║  唯争一线        ║
-    ╚══════════════════╝
+  <div id="battleContent"></div>
+  <div class="battle-modal" id="battleModal">
+    <div class="battle-modal-content">
+      <div class="battle-modal-header" id="battleModalHeader"></div>
+      <div class="battle-modal-body">
+        <div class="round-log" id="roundLog"></div>
+        <div id="battleRewards" class="battle-rewards"></div>
+      </div>
+      <div class="battle-modal-footer">
+        <button class="bt-btn" onclick="closeBattleModal()" style="width:100%">返回</button>
+      </div>
     </div>
-    <div class="battle-soon">比武场 · 即将开放</div>
-    <div style="color:var(--muted);font-size:13px;margin-top:12px">与道友切磋，争夺仙榜排名</div>
   </div>
 </div>
 
@@ -293,6 +320,7 @@ function switchTab(name) {
   if (name === 'cultivate') refreshCultivate();
   if (name === 'inventory') refreshInventory();
   if (name === 'pet') refreshPet();
+  if (name === 'battle') refreshBattle();
 }
 
 function showHatch() {
@@ -458,8 +486,280 @@ function showToast(msg, enlightenment) {
   setTimeout(() => t.remove(), enlightenment ? 4000 : 2500);
 }
 
+// Battle system
+let battleOpponents = [];
+const BATTLE_NAMES = ['青云子','玄冥老祖','紫霞仙子','苍龙真人','白骨魔君','天机散人','幽冥鬼母','金翅大鹏','九尾灵狐','铁面判官','碧落仙翁','血魔道人','星辰道人','烈焰真君','寒冰仙子'];
+
+function loadOpponents() {
+  const pet = game.getPet();
+  if (!pet) return [];
+  const keys = Object.keys(SPECIES);
+  const diffs = [
+    { key: 'easy', label: '道友', realmOff: -1, levelOff: -2 },
+    { key: 'medium', label: '强敌', realmOff: 0, levelOff: 2 },
+    { key: 'hard', label: '绝世高手', realmOff: 1, levelOff: 5 }
+  ];
+  const usedNames = [];
+  battleOpponents = diffs.map((d, i) => {
+    const speciesKey = keys[Math.floor(Math.random() * keys.length)];
+    const sp = SPECIES[speciesKey];
+    const realm = Math.max(0, Math.min(9, pet.realm + d.realmOff));
+    const level = Math.max(1, pet.level + d.levelOff + Math.floor(Math.random() * 3) - 1);
+    let name;
+    do { name = BATTLE_NAMES[Math.floor(Math.random() * BATTLE_NAMES.length)]; } while (usedNames.includes(name));
+    usedNames.push(name);
+    return {
+      name, speciesKey, emoji: sp.emoji, realm, level,
+      difficulty: d.key, difficultyLabel: d.label,
+      realmName: REALMS[realm].name, realmColor: REALMS[realm].color,
+      power: level * 10 + realm * 50 + (i + 1) * 15 + Math.floor(Math.random() * 20)
+    };
+  });
+  return battleOpponents;
+}
+
+function challengeOpponent(index) {
+  const pet = game.getPet();
+  if (!pet) return;
+  const opp = battleOpponents[index];
+  if (!opp) return;
+  if (pet.stats.spirit < 15) { showToast('灵力不足，无法挑战（需要15）'); return; }
+
+  pet.stats.spirit -= 10;
+
+  const playerPower = pet.level * 10 + pet.realm * 50 + pet.stats.root + pet.stats.insight + pet.stats.daoHeart;
+  const powerRatio = playerPower / Math.max(1, opp.power);
+
+  const rounds = [];
+  let playerHp = 100, oppHp = 100;
+  const acts = ['挥出一道剑气','催动法术猛攻','祭出法宝压制','运转功法防御反击','以灵力化为护盾','召唤灵兽助战','施展禁术强攻','凝聚灵力爆发','布下阵法困敌','以意念为剑直指对手'];
+
+  for (let r = 1; r <= 8; r++) {
+    const pDmg = Math.floor((10 + Math.random() * 20) * powerRatio);
+    const oDmg = Math.floor((10 + Math.random() * 20) / powerRatio);
+    playerHp -= oDmg;
+    oppHp -= pDmg;
+    rounds.push({ num: r, text: `你${acts[Math.floor(Math.random() * acts.length)]}，造成${pDmg}伤害；${opp.name}${acts[Math.floor(Math.random() * acts.length)]}，造成${oDmg}伤害。` });
+    if (playerHp <= 0 || oppHp <= 0) break;
+  }
+
+  const won = oppHp <= 0 || (playerHp > 0 && playerHp > oppHp);
+  const rewards = [];
+  const realmScale = 1 + pet.realm * 0.1;
+  if (!game.state.battle) game.state.battle = { wins: 0, losses: 0 };
+
+  if (won) {
+    const expGain = Math.floor((30 + opp.level * 8 + opp.realm * 20) * realmScale);
+    const stoneGain = Math.floor((20 + opp.level * 3 + opp.realm * 10) * realmScale);
+    pet.exp += expGain;
+    game.state.inventory.spiritStones += stoneGain;
+    rewards.push(`经验+${expGain}`, `灵石+${stoneGain}`);
+    while (pet.exp >= pet.expToNext) { pet.exp -= pet.expToNext; game._levelUpStats(pet); }
+    game.state.battle.wins++;
+    game.addLog(`比武战胜${opp.name}！经验+${expGain}，灵石+${stoneGain}`);
+  } else {
+    game.state.battle.losses++;
+    game.addLog(`比武败于${opp.name}，来日再战！`);
+  }
+
+  game.save();
+  showBattleResult({ won, opp, rounds, rewards });
+  refreshBattle();
+}
+
+function showBattleResult(result) {
+  document.getElementById('battleModalHeader').innerHTML = result.won
+    ? `<div class="victory-text">胜！</div><div style="margin-top:8px;color:var(--muted)">击败了 ${result.opp.name}</div>`
+    : `<div class="defeat-text">败...</div><div style="margin-top:8px;color:var(--muted)">不敌 ${result.opp.name}</div>`;
+  document.getElementById('roundLog').innerHTML = result.rounds.map(r =>
+    `<div class="round-item"><span class="round-num">第${r.num}回合</span> ${r.text}</div>`
+  ).join('');
+  document.getElementById('battleRewards').textContent = result.rewards.join('  ');
+  document.getElementById('battleModal').classList.add('show');
+}
+
+function closeBattleModal() {
+  document.getElementById('battleModal').classList.remove('show');
+}
+
+function refreshBattle() {
+  const pet = game.getPet();
+  const container = document.getElementById('battleContent');
+  if (!pet) {
+    container.innerHTML = '<div class="battle-no-pet">请先孵化灵宠</div>';
+    return;
+  }
+  loadOpponents();
+  const battle = game.state.battle || { wins: 0, losses: 0 };
+  const realm = REALMS[pet.realm];
+  let html = `<div class="battle-title">⚔️ 比武场</div>
+    <div class="battle-sub">仙道茫茫，唯争一线</div>
+    <div class="battle-rank">${realm.name} · 排名第${Math.max(1, 100 - battle.wins * 3 - pet.realm * 8)}名</div>
+    <div class="battle-record"><span class="win">胜 ${battle.wins}</span><span class="loss">负 ${battle.losses}</span></div>`;
+  for (let i = 0; i < battleOpponents.length; i++) {
+    const o = battleOpponents[i];
+    html += `<div class="opp-card" onclick="challengeOpponent(${i})">
+      <span class="opp-emoji">${o.emoji}</span>
+      <div class="opp-info">
+        <div class="opp-name">${o.name}</div>
+        <div class="opp-detail"><span style="color:${o.realmColor}">${o.realmName}</span> Lv.${o.level}  战力 ${o.power}</div>
+      </div>
+      <span class="opp-diff ${o.difficulty}">${o.difficultyLabel}</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
 // Auto refresh on load
 refreshUI();
+
+// ===== canvas-share.js (inline) =====
+const REALM_QUOTES = {
+  '练气期': '修仙之路始于此',
+  '筑基期': '道基已筑，仙路可期',
+  '金丹期': '金丹大道已在脚下',
+  '元婴期': '元婴出窍，逍遥天地',
+  '化神期': '化神返虚，参悟天机',
+  '炼虚期': '炼虚合道，天人合一',
+  '大乘期': '大乘圆满，渡劫在即',
+  '渡劫期': '渡劫飞升，一步之遥',
+  '真仙期': '已超脱凡尘',
+  '仙尊': '万仙之尊，唯我独尊'
+};
+
+function doShare() {
+  const s = game.getStatus();
+  if (!s) { showToast('还没有灵宠'); return; }
+  const sp = SPECIES[s.species];
+
+  const W = 420, H = 560;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Xianxia border pattern
+  ctx.strokeStyle = s.realmColor;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(12, 12, W - 24, H - 24);
+  ctx.strokeStyle = s.realmColor + '44';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(18, 18, W - 36, H - 36);
+
+  // Corner ornaments
+  const cornerSize = 20;
+  const corners = [[14, 14], [W - 14, 14], [14, H - 14], [W - 14, H - 14]];
+  ctx.strokeStyle = s.realmColor;
+  ctx.lineWidth = 2;
+  corners.forEach(([cx, cy], i) => {
+    const dx = i % 2 === 0 ? 1 : -1;
+    const dy = i < 2 ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + dy * cornerSize);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + dx * cornerSize, cy);
+    ctx.stroke();
+  });
+
+  // Decorative line pattern at top
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  for (let i = 0; i < 8; i++) {
+    const y = 40 + i * 8;
+    ctx.strokeStyle = s.realmColor;
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(40, y);
+    ctx.lineTo(W - 40, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Pet emoji
+  ctx.font = '80px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(sp.emoji, W / 2, 120);
+
+  // Shiny indicator
+  if (s.shiny) {
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#ffd700';
+    ctx.fillText('✨ 闪光 ✨', W / 2, 170);
+  }
+
+  // Pet name
+  ctx.font = 'bold 28px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillText(s.name, W / 2, s.shiny ? 210 : 200);
+
+  // Stars
+  ctx.font = '20px sans-serif';
+  let starStr = '';
+  for (let i = 1; i <= 5; i++) starStr += i <= s.rarity ? '★' : '☆';
+  ctx.fillStyle = RARITY_COLORS[s.rarity] || '#d4a843';
+  ctx.fillText(starStr, W / 2, 240);
+
+  // Realm badge
+  ctx.font = 'bold 22px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = s.realmColor;
+  ctx.fillText(s.realmName + ' Lv.' + s.level, W / 2, 290);
+
+  // Cultivation path
+  ctx.font = '14px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText('修炼之道：' + sp.path, W / 2, 320);
+
+  // Decorative divider
+  ctx.strokeStyle = s.realmColor + '66';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(60, 350);
+  ctx.lineTo(W / 2 - 15, 350);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(W / 2 + 15, 350);
+  ctx.lineTo(W - 60, 350);
+  ctx.stroke();
+  ctx.font = '12px serif';
+  ctx.fillStyle = s.realmColor + '88';
+  ctx.fillText('◆', W / 2, 354);
+
+  // Xianxia quote
+  const quote = REALM_QUOTES[s.realmName] || '修仙之路漫漫';
+  ctx.font = '18px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = s.realmColor;
+  ctx.fillText('「' + quote + '」', W / 2, 395);
+
+  // Watermark
+  ctx.font = '13px "PingFang SC", "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#333';
+  ctx.fillText('凡人修仙传 · MortalBuddy', W / 2, H - 30);
+
+  // Convert to image and download
+  canvas.toBlob(function(blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mortalbuddy-share.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // Copy text to clipboard
+    const text = `我的灵宠${s.name}已修炼至${s.realmName}Lv.${s.level}！来凡人修仙传一起修仙！`;
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('分享卡片已下载，文案已复制到剪贴板');
+    }).catch(() => {
+      showToast('分享卡片已下载');
+    });
+  }, 'image/png');
+}
 </script>
 </body>
 </html>
