@@ -287,63 +287,36 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 const SUPABASE_URL = 'https://hdhuisgjvrjjaadbdzuf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkaHVpc2dqdnJqamFhZGJkenVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNTYxMDUsImV4cCI6MjA5MDczMjEwNX0.73RwO09o65EUZEF9oP4-1s8n9pvs_9NEpNxt8d3327E';
 
-let supabaseClient = null;
 let currentUser = null;
 
-// Init Supabase client
-try { supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) {}
-
-function syncToCloud() {
-  if (!currentUser) return;
-  const data = JSON.stringify({ state: game.state, savedAt: Date.now() });
-  localStorage.setItem('mortalbuddy_cloud', data);
-  showToast('云端同步完成');
-}
-
-function syncFromCloud() {
-  const raw = localStorage.getItem('mortalbuddy_cloud');
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch(e) { return null; }
-}
-
 async function loginWithGoogle() {
-  if (!supabaseClient) { showToast('Supabase 未配置，使用离线模式'); skipLogin(); return; }
+  const client = getSB();
+  if (!client) { showToast('登录服务未就绪，使用离线模式'); skipLogin(); return; }
   try {
-    const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google' });
-    if (error) { showToast('登录失败：' + error.message); }
-  } catch(e) {
-    showToast('登录异常，使用离线模式');
-    skipLogin();
-  }
+    await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
+  } catch(e) { showToast('登录异常'); skipLogin(); }
 }
 
 async function checkAuthState() {
-  if (!supabaseClient) return null;
+  const client = getSB();
+  if (!client) return null;
   try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    return session ? session.user : null;
-  } catch(e) { return null; }
+    const { data: { session } } = await client.auth.getSession();
+    if (session) { currentUser = session.user; return currentUser; }
+  } catch(e) {}
+  return null;
 }
 
 function skipLogin() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  if (game.getPet()) {
-    switchTab('pet');
-  } else {
-    showHatch();
-  }
+  if (game.getPet()) switchTab('pet'); else showHatch();
 }
 
 async function doLogout() {
-  if (supabaseClient) {
-    try { await supabaseClient.auth.signOut(); } catch(e) {}
-  }
+  const client = getSB();
+  if (client) try { await client.auth.signOut(); } catch(e) {}
   currentUser = null;
-  document.getElementById('cloudIcon').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
-  showToast('已退出登录');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-login').classList.add('active');
+  location.reload();
 }
 
 // ===== Game core (unchanged) =====
