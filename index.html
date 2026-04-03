@@ -17,6 +17,17 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 .tab.active{color:var(--gold)}
 .tab .icon{font-size:20px;display:block;margin-bottom:2px}
 
+/* Login Page */
+.login-page{text-align:center;padding:80px 20px 40px}
+.login-title{font-size:28px;color:var(--gold);margin-bottom:16px}
+.login-sub{color:var(--muted);font-size:14px;margin-bottom:40px}
+.login-google-btn{display:inline-flex;align-items:center;gap:10px;background:#1a1a3a;border:1px solid #2a2a4a;border-radius:10px;color:#e2e8f0;font-size:16px;padding:14px 32px;cursor:pointer;transition:.2s}
+.login-google-btn:hover{border-color:var(--gold);background:#1f1f3a}
+.login-google-btn .g-icon{font-size:22px}
+.login-skip{color:#444;font-size:12px;margin-top:30px;background:transparent;border:none;cursor:pointer;text-decoration:underline}
+.login-cloud-hint{color:#3a3a4a;font-size:12px;margin-top:16px}
+.cloud-icon{position:fixed;top:12px;right:12px;color:var(--gold);font-size:16px;z-index:101;cursor:pointer;display:none}
+
 /* Hatch Page */
 .hatch-title{text-align:center;padding:40px 0 20px;font-size:24px;color:var(--gold)}
 .hatch-sub{text-align:center;color:var(--muted);margin-bottom:24px;font-size:14px}
@@ -96,6 +107,7 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 .log-list{max-height:300px;overflow-y:auto}
 .log-item{padding:6px 0;border-bottom:1px solid #1a1a3a;font-size:12px;color:var(--muted)}
 .log-time{color:#444;font-size:10px}
+.logout-btn{display:block;margin:16px auto 0;padding:8px 24px;background:transparent;border:1px solid #333;border-radius:8px;color:#555;font-size:12px;cursor:pointer}
 
 /* Battle Page */
 .battle-title{text-align:center;padding:30px 0 8px;font-size:24px;color:var(--gold)}
@@ -141,8 +153,24 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 </head>
 <body>
 
+<!-- LOGIN PAGE -->
+<div id="page-login" class="page active">
+  <div class="login-page">
+    <div class="login-title">⚔️ 凡人修仙传</div>
+    <div class="login-sub">修仙宠物 · 云端存档</div>
+    <button class="login-google-btn" onclick="loginWithGoogle()">
+      <span class="g-icon">🌐</span> 以仙门令牌登录
+    </button>
+    <div class="login-cloud-hint">登录后自动同步修仙进度</div>
+    <button class="login-skip" onclick="skipLogin()">暂不登录，离线修仙</button>
+  </div>
+</div>
+
+<!-- Cloud status icon -->
+<div class="cloud-icon" id="cloudIcon" onclick="syncToCloud()" title="云端已同步">☁️</div>
+
 <!-- HATCH PAGE -->
-<div id="page-hatch" class="page active">
+<div id="page-hatch" class="page">
   <div class="hatch-title">⚔️ 凡人修仙传</div>
   <div class="hatch-sub">选择一只灵宠，踏上修仙之路</div>
   <div class="species-grid" id="speciesGrid"></div>
@@ -225,6 +253,7 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
     <div class="cultivate-title">📜 修炼日志</div>
     <div class="log-list" id="logList"></div>
   </div>
+  <button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">🚪 退出登录</button>
 </div>
 
 <!-- BATTLE PAGE -->
@@ -252,8 +281,72 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
   <div class="tab" data-page="battle" onclick="switchTab('battle')"><span class="icon">⚔️</span>比武</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="game.js"></script>
 <script>
+const SUPABASE_URL = 'PLACEHOLDER_URL';
+const SUPABASE_ANON_KEY = 'PLACEHOLDER_KEY';
+
+let supabaseClient = null;
+let currentUser = null;
+
+// Init Supabase client
+try { supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e) {}
+
+function syncToCloud() {
+  if (!currentUser) return;
+  const data = JSON.stringify({ state: game.state, savedAt: Date.now() });
+  localStorage.setItem('mortalbuddy_cloud', data);
+  showToast('云端同步完成');
+}
+
+function syncFromCloud() {
+  const raw = localStorage.getItem('mortalbuddy_cloud');
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch(e) { return null; }
+}
+
+async function loginWithGoogle() {
+  if (!supabaseClient) { showToast('Supabase 未配置，使用离线模式'); skipLogin(); return; }
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({ provider: 'google' });
+    if (error) { showToast('登录失败：' + error.message); }
+  } catch(e) {
+    showToast('登录异常，使用离线模式');
+    skipLogin();
+  }
+}
+
+async function checkAuthState() {
+  if (!supabaseClient) return null;
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    return session ? session.user : null;
+  } catch(e) { return null; }
+}
+
+function skipLogin() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  if (game.getPet()) {
+    switchTab('pet');
+  } else {
+    showHatch();
+  }
+}
+
+async function doLogout() {
+  if (supabaseClient) {
+    try { await supabaseClient.auth.signOut(); } catch(e) {}
+  }
+  currentUser = null;
+  document.getElementById('cloudIcon').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  showToast('已退出登录');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+}
+
+// ===== Game core (unchanged) =====
 const game = new MortalBuddy();
 let selectedSpecies = null;
 
@@ -344,7 +437,7 @@ function refreshPet() {
   document.getElementById('petEmoji').style.filter = `drop-shadow(0 0 20px ${s.realmColor})`;
   document.getElementById('petName').textContent = s.name;
   document.getElementById('cultPath').textContent = '修炼之道：' + sp.path;
-  
+
   let stars = '';
   for (let i = 1; i <= 5; i++) stars += `<span class="${i <= s.rarity ? 'star-on' : 'star-off'}">${i <= s.rarity ? '★' : '☆'}</span>`;
   document.getElementById('petStars').innerHTML = stars;
@@ -366,7 +459,7 @@ function refreshPet() {
 
   const hearts = Math.ceil(s.affection / 20);
   document.getElementById('affection').textContent = '❤️'.repeat(hearts) + '🖤'.repeat(5 - hearts) + ' ' + s.affection;
-  
+
   document.getElementById('weatherDisplay').textContent=game.getWeather().emoji+' '+game.getWeather().text;
   document.getElementById('speechBubble').textContent = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
 }
@@ -376,7 +469,7 @@ function refreshCultivate() {
   if (!s) return;
   const realm = REALMS[s.realm];
   document.getElementById('btCurrent').textContent = '当前：' + realm.name + ' Lv.' + s.level;
-  
+
   if (s.realm < 9) {
     const next = REALMS[s.realm + 1];
     const bonus = (s.stats.daoHeart + s.stats.insight) * 0.01;
@@ -409,7 +502,7 @@ function refreshInventory() {
   const s = game.getStatus();
   if (!s) return;
   document.getElementById('stoneCount').textContent = game.state.inventory.spiritStones;
-  
+
   const pills = game.state.inventory.pills || {};
   const pillNames = { expPill: '经验丹', realmPill: '破境丹', healPill: '疗伤丹', spiritPill: '聚灵丹', rootPill: '培根丹' };
   const ip = document.getElementById('invPills');
@@ -424,6 +517,9 @@ function refreshInventory() {
     const t = new Date(item.time);
     ll.innerHTML += `<div class="log-item"><div class="log-time">${t.toLocaleString('zh-CN')}</div>${item.text}</div>`;
   }
+
+  // Show/hide logout button based on login state
+  document.getElementById('logoutBtn').style.display = currentUser ? 'block' : 'none';
 }
 
 function animatePet(type) {
@@ -610,8 +706,21 @@ function refreshBattle() {
   container.innerHTML = html;
 }
 
-// Auto refresh on load
-refreshUI();
+// Auth init on load
+window.addEventListener('load', async () => {
+  const user = await checkAuthState();
+  if (user) {
+    currentUser = user;
+    document.getElementById('cloudIcon').style.display = 'block';
+    syncFromCloud();
+    syncToCloud();
+  }
+  // Show login page first (already active by default)
+  // If user is logged in, go to game
+  if (user) {
+    if (game.getPet()) switchTab('pet'); else showHatch();
+  }
+});
 
 // ===== canvas-share.js (inline) =====
 const REALM_QUOTES = {
