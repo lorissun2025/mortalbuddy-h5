@@ -285,9 +285,8 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
 <script src="auth.js"></script>
 <script src="game.js"></script>
 <script>
-/* SUPABASE_URL/KEY defined in auth.js */
+/* SUPABASE_URL/KEY and currentUser defined in auth.js */
 
-let currentUser = null;
 
 async function loginWithGoogle() {
   const client = getSB();
