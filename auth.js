@@ -71,12 +71,15 @@ function getCurrentUser() {
 async function syncToCloud(state) {
   const client = getSB();
   if (!client || !currentUser) return false;
+  if (!state) return false;
   try {
+    const stateStr = typeof state === 'string' ? state : JSON.stringify(state);
+    if (!stateStr || stateStr === '{}' || stateStr === 'null') return false;
     const { error } = await client
       .from('game_states')
       .upsert({
         user_id: currentUser.id,
-        state_json: state,
+        state_json: stateStr,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' });
     if (error) {
