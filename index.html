@@ -185,6 +185,7 @@ body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Hiragino 
       <span class="pet-emoji" id="petEmoji">🐱</span>
     </div>
     <div class="pet-name" id="petName"></div>
+    <div style="font-size:11px;color:var(--muted);cursor:pointer;margin-top:2px" onclick="renamePet()">✏️ 改名</div>
     <div class="stars" id="petStars"></div>
     <span class="realm-badge" id="realmBadge"></span>
     <div style="color:var(--muted);font-size:13px;margin-top:4px" id="cultPath"></div>
@@ -376,6 +377,17 @@ document.getElementById('hatchBtn').onclick = () => {
   }, delay);
 };
 
+function renamePet() {
+  const pet = game.getPet();
+  if (!pet) return;
+  const name = prompt('给灵宠取个名字：', pet.name);
+  if (name && name.trim()) {
+    game.rename(name.trim());
+    refreshPet();
+    showToast('改名成功！');
+  }
+}
+
 function switchTab(name) {
   if (name !== 'hatch' && !game.getPet()) { showToast('请先孵化灵宠'); return; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -432,7 +444,7 @@ function refreshPet() {
   const hearts = Math.ceil(s.affection / 20);
   document.getElementById('affection').textContent = '❤️'.repeat(hearts) + '🖤'.repeat(5 - hearts) + ' ' + s.affection;
 
-  document.getElementById('weatherDisplay').textContent=game.getWeather().emoji+' '+game.getWeather().text;
+  document.getElementById('weatherDisplay').textContent=game.getWeather().emoji+' '+game.getWeather().name;
   document.getElementById('speechBubble').textContent = SPEECHES[Math.floor(Math.random() * SPEECHES.length)];
 }
 
