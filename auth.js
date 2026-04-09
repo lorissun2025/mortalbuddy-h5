@@ -103,8 +103,21 @@ async function syncFromCloud() {
       .select('state_json')
       .eq('user_id', currentUser.id)
       .single();
-    if (error || !data) return null;
-    return data.state_json;
+    if (error) {
+      console.log('[Auth] syncFromCloud: no cloud data yet or error:', error.message);
+      return null;
+    }
+    if (!data || !data.state_json) return null;
+    const cloudState = typeof data.state_json === 'string' ? JSON.parse(data.state_json) : data.state_json;
+    if (!cloudState || !cloudState.pet) return null;
+    // Apply cloud data to game
+    if (typeof game !== 'undefined' && game) {
+      game.state = cloudState;
+      game.save();
+      if (typeof updateUI === 'function') updateUI();
+      console.log('[Auth] 云端数据已加载:', cloudState.pet.species);
+    }
+    return cloudState;
   } catch (e) {
     console.error('[Auth] syncFromCloud error:', e);
     return null;
